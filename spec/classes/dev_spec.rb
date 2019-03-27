@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'koji::dev', :type => :class do
+describe 'koji::client', :type => :class do
 
     let (:params) { {
         :username => 'flast',

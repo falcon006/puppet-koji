@@ -171,3 +171,10 @@ LockOut = <%= @lockout %>
 ## OfflineMessage as the fault string).
 ## If LockOut is True, the server will report a ServerOffline fault for all non-admin
 ## requests.
+
+[policy]
+build_from_srpm =
+    tag * :: allow
+    has_perm admin :: allow
+    all :: all
+

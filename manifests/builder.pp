@@ -63,20 +63,6 @@ class koji::builder (
         notify  => Service['kojid']
     }
 
-    file { '/etc/kojid/koji_ca_cert.crt':
-        ensure  => present,
-        source  => 'puppet:///modules/koji/pki/koji_ca_cert.crt',
-        require => Package['koji-builder'],
-        notify  => Service['kojid']
-    }
-
-    file { "/etc/kojid/${::hostname}.pem":
-        ensure  => present,
-        source  => "puppet:///modules/koji/pki/${::hostname}.pem",
-        require => Package['koji-builder'],
-        notify  => Service['kojid']
-    }
-
     cron { 'clean_buildroots':
         command => 'find /var/lib/mock -type d -name root -mtime +1 -delete',
         hour    => 0,
