@@ -69,81 +69,22 @@ class koji::hub (
     $offlinemessage       = undef,
     $lockout              = undef
 ) {
+    include koji::httpd
 
-  #include apache
-
-    package { 'koji-hub':
+    package { ['koji-hub',
+               'koji',
+               'koji-utils']:
         ensure => present
     }
 
-    package { 'koji':
-        ensure => present
-    }
-
-    package { 'koji-utils':
-        ensure => present
-    }
-
-    #TODO: reconsider this user creation. service accounts should be created
-    #by the RPMs that install the software.
-    user { 'koji':
-        ensure     => present,
-        comment    => 'Koji role account for Koji DB',
-        managehome => true,
-        groups     => 'postgres'
-    }
-
-    #TODO: ugly hack for lack of control over posgres. this *needs* to be
-    #addressed.
-    file { '/var/lib/pgsql/data/pg_hba.conf':
-        ensure  => present,
-        content => template('koji/postgres/pg_hba.conf.erb'),
-        owner   => 'postgres',
-        group   => 'postgres',
-        mode    => '0600'
-    }
-
-    file { "${kojidir}/packages":
+    file { ["${kojidir}/packages",
+            "${kojidir}/repos",
+            "${kojidir}/work",
+            "${kojidir}/scratch"]:
         ensure => directory,
         owner  => 'apache',
         group  => 'apache',
         mode   => undef,
-    }
-
-    file { "${kojidir}/repos":
-        ensure => directory,
-        owner  => 'apache',
-        group  => 'apache',
-        mode   => undef,
-    }
-
-    file { "${kojidir}/work":
-        ensure => directory,
-        owner  => 'apache',
-        group  => 'apache',
-        mode   => undef,
-    }
-
-    file { "${kojidir}/scratch":
-        ensure => directory,
-        owner  => 'apache',
-        group  => 'apache',
-        mode   => undef,
-    }
-
-    exec { 'create_koji_role_user':
-        user    => 'postgres',
-        command => 'createuser -DSR koji',
-        unless  => 'psql -c "\du" | grep -q koji'
-    }
-
-    file { '/etc/pki/koji':
-        ensure  => directory,
-        recurse => true,
-        source  => 'puppet:///modules/koji/pki',
-        owner   => 'root',
-        group   => 'root',
-        mode    => '0644'
     }
 
     file { '/etc/koji-hub/hub.conf':
@@ -161,36 +102,6 @@ class koji::hub (
         group   => 'root',
         mode    => '0644',
         notify  => Service['httpd']
-    }
-
-    file { '/root/.koji':
-        ensure => directory,
-        owner  => 'root',
-        group  => 'root'
-    }
-
-    file { '/root/.koji/config':
-        ensure  => present,
-        content => template('koji/hub/root_config.erb'),
-        owner   => 'root',
-        group   => 'root',
-        mode    => '0644'
-    }
-
-    file { '/root/.koji/koji_ca_cert.crt':
-        ensure => present,
-        source => 'puppet:///modules/koji/pki/koji_ca_cert.crt',
-        owner  => 'root',
-        group  => 'root',
-        mode   => '0644'
-    }
-
-    file { '/root/.koji/root.pem':
-        ensure => present,
-        source => 'puppet:///modules/koji/pki/koji.pem',
-        owner  => 'root',
-        group  => 'root',
-        mode   => '0644'
     }
 
     file { '/etc/koji-gc/koji-gc.conf':
@@ -219,27 +130,6 @@ class koji::hub (
         mode    => '0770'
     }
 
-    # Weekly truncate of sessions table before vacuum
-    cron { 'truncate_sessions_db':
-        ensure  => present,
-        command => 'DELETE FROM sessions WHERE update_time < now() - \'1 day\'::interval;',
-        user    => 'koji',
-        minute  => 0,
-        hour    => 23,
-        weekday => 5,
-        require => User['koji']
-    }
-
-    # Do a full vacuum daily at midnight
-    cron { 'vacuum_db':
-        ensure  => present,
-        command => 'vacuumdb -fza > /dev/null',
-        user    => 'postgres',
-        minute  => 0,
-        hour    => 0,
-        weekday => 6
-    }
-
     # Daily pruning of old builds
     cron { 'koji_gc':
         ensure  => present,
@@ -251,23 +141,4 @@ class koji::hub (
             Package['koji-utils']
         ]
     }
-
-    cron { 'backup_koji_db':
-        ensure  => present,
-        command => 'pg_dump koji | gzip -c -9  > /var/lib/pgsql/backups/koji_db_`date +\\%d\\%m\\%Y`.sql.gz',
-        minute  => 0,
-        hour    => 5,
-        user    => 'koji',
-        require => User['koji']
-    }
-
-    cron { 'prune_koji_db_backups':
-        ensure  => present,
-        command => 'find /var/lib/pgsql/backups -mtime 14 -exec rm -f {} \\;',
-        minute  => 30,
-        hour    => 0,
-        user    => 'koji',
-        require => User['koji']
-    }
-
 }

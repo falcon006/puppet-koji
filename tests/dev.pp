@@ -1,4 +1,4 @@
-class { '::koji::dev':
+class { '::koji::client':
   username => 'jdoe',
   server   => 'http://kojihub01.example.com/kojihub',
   weburl   => 'http://kojiweb01.example.com/koji',
