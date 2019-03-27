@@ -1,0 +1,35 @@
+---
+driver:
+  name: docker
+  use_sudo: false
+
+provisioner:
+  name: puppet_apply
+  puppet_version: 3.8.2
+  modules_path: modules
+  manifests_path: manifests
+  <% if ENV['PUPPET3'] != nil %>
+  require_puppet_collections: false
+  <% else %>
+  require_puppet_collections: true
+  <% end %>
+  custom_facts:
+    ts_deploy_key: <%= ENV['TS_DEPLOY_KEY'] != nil ? ENV['TS_DEPLOY_KEY'] : 'ts_deploy_key' %>
+    ts_feature_plan: <%= ENV['TS_FEATURE_PLAN'] != nil ? ENV['TS_FEATURE_PLAN'] : 'monitor' %>
+    <% if ENV['TS_CONFIG_ARGS'] != nil %>
+    ts_config_args: <%= ENV['TS_CONFIG_ARGS'] %>
+    <% end %>
+    <% if ENV['TS_PACKAGE_VERSION'] != nil %>
+    ts_package_version: <%= ENV['TS_PACKAGE_VERSION'] %>
+    <% end %>
+
+platforms:
+  - name: centos-7.3
+    driver_config:
+      image: centos:7.3.1611
+      platform: centos
+
+suites:
+  - name: default
+    provisioner:
+      manifest: site.pp
